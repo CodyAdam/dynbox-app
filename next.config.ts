@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
   },
   // Configure assetPrefix or else the server won't properly resolve your assets.
   assetPrefix:
-    env.NODE_ENV === "development" ? `http://localhost:3000` : undefined,
+    env.NODE_ENV === "development" ? `http://localhost:3001` : undefined,
 };
 
 export default nextConfig;

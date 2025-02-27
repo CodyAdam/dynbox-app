@@ -1,13 +1,23 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "dynbox-app",
+  "productName": "Dynbox App",
   "version": "0.1.0",
-  "identifier": "com.tauri.dev",
+  "identifier": "com.dynbox.app",
   "build": {
     "frontendDist": "../out",
-    "devUrl": "http://localhost:3000",
+    "devUrl": "http://localhost:3001",
     "beforeDevCommand": "pnpm dev",
     "beforeBuildCommand": "pnpm build"
+  },
+  "plugins": {
+    "deep-link": {
+      "mobile": [
+        { "host": "dynbox.co", "pathPrefix": ["/mobile"] }
+      ],
+      "desktop": {
+        "schemes": ["dynbox"]
+      }
+    }
   },
   "app": {
     "windows": [
@@ -16,9 +26,11 @@
         "width": 800,
         "height": 600,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "decorations": false
       }
     ],
+
     "security": {
       "csp": null
     }
