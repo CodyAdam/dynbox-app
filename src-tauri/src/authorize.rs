@@ -9,7 +9,7 @@ use url::Url;
 /// extracts the token, and saves it to the application's store.
 pub fn process_auth_urls(app: AppHandle, urls: Vec<Url>) -> Result<(), String> {
     for url in urls {
-        println!("Processing URL: {}, {}", url, url.authority());
+        println!("Processing URL: {}", url);
         if url.scheme() == "dynbox" && url.authority() == "authorize" {
             // Parse the query parameters
             if let Some(token) = url
@@ -18,7 +18,7 @@ pub fn process_auth_urls(app: AppHandle, urls: Vec<Url>) -> Result<(), String> {
                 .map(|(_, value)| value.to_string())
             {
                 // Store the token
-                let store = app.store("store.json").map_err(|e| e.to_string())?;
+                let store = app.store("config.json").map_err(|e| e.to_string())?;
                 store.set("token", json!(token));
 
                 // Save changes to disk

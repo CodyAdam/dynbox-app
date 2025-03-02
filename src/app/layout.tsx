@@ -1,8 +1,10 @@
 import { cn } from "@/lib/css";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
 import TitleBar from "./_components/title-bar";
+import "./globals.css";
+import Providers from './providers';
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -27,13 +29,15 @@ export default function RootLayout({
     <html lang="en" className="h-full">
       <body
         className={cn(
-          "bg-background animate-in fade-in duration-1000 text-foreground flex h-full flex-col overflow-hidden antialiased",
+          "bg-background animate-in fade-in text-foreground flex h-full flex-col overflow-hidden antialiased duration-1000",
           geistSans.variable,
           geistMono.variable,
         )}
       >
-        <TitleBar />
-        <main className="h-full w-full overflow-hidden">{children}</main>
+        <Providers>
+          <TitleBar />
+          <main className="h-full w-full overflow-hidden">{children}</main>
+        </Providers>
       </body>
     </html>
   );

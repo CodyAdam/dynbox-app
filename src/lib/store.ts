@@ -4,9 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 type TauriStore = {
   token?: string;
   vaults?: {
-    id: string;
-    name: string;
-  }[];
+    [vaultId: string]: {
+      directory?: string;
+      enabled: boolean;
+    };
+  };
 };
 
 /**
@@ -31,7 +33,7 @@ export function useTauriStore<K extends keyof TauriStore>(
     const initStore = async () => {
       try {
         setIsLoading(true);
-        const storeInstance = await load("store.json", { autoSave: true });
+        const storeInstance = await load("config.json", { autoSave: true });
         setStore(storeInstance);
 
         // Get the initial value from the store
@@ -81,7 +83,12 @@ export function useTauriStore<K extends keyof TauriStore>(
       if (!store) return;
 
       try {
-        await store.set(key as string, newValue);
+        if (newValue === undefined) {
+          await store.delete(key as string);
+        } else {
+          await store.set(key as string, newValue);
+        }
+
         // With autoSave: true, we don't need to call store.save()
       } catch (err) {
         setError(err instanceof Error ? err : new Error(String(err)));

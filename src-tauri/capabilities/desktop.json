@@ -1,6 +1,39 @@
 {
   "identifier": "desktop-capability",
-  "platforms": ["macOS", "windows", "linux"],
-  "windows": ["main"],
-  "permissions": ["autostart:default", "updater:default", "shell:default"]
+  "platforms": [
+    "macOS",
+    "windows",
+    "linux"
+  ],
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "autostart:default",
+    "updater:default",
+    "shell:default",
+    {
+      "identifier": "shell:allow-spawn",
+      "allow": [
+        {
+          "name": "bin/rclone-dynbox",
+          "sidecar": true,
+          "args": true
+        }
+      ]
+    },
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "powershell",
+          "cmd": "powershell",
+          "args": ["-C", "Test-Path", "HKLM:\\SOFTWARE\\WOW6432Node\\WinFsp"]
+        }
+      ]
+    },
+    "shell:allow-kill",
+    "fs:default",
+    "dialog:default"
+  ]
 }
