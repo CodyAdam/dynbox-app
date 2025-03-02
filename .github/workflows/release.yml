@@ -68,6 +68,7 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'Dynbox App ${{ github.ref_name }}'
