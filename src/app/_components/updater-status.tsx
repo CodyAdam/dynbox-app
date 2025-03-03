@@ -1,7 +1,11 @@
 "use client";
 
 import { cn } from "@/lib/css";
-import { RiDownloadLine, RiRestartLine } from "@remixicon/react";
+import {
+  RiDownloadLine,
+  RiErrorWarningLine,
+  RiRestartLine,
+} from "@remixicon/react";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check, Update } from "@tauri-apps/plugin-updater";
 import { useEffect, useState } from "react";
@@ -85,7 +89,7 @@ export function UpdaterStatus({ className }: { className?: string }) {
   };
 
   return (
-    <div className={cn("ml-2 flex h-8 items-center", className)}>
+    <div className={cn("ml-2 flex h-8 max-w-sm items-center", className)}>
       {updateStatus === "available" && (
         <span className="text-muted-foreground flex items-center gap-1 text-xs">
           <RiDownloadLine className="h-3 w-3 animate-pulse" />
@@ -108,6 +112,13 @@ export function UpdaterStatus({ className }: { className?: string }) {
           <RiRestartLine className="h-3 w-3" />
           <span>Restart to update</span>
         </button>
+      )}
+
+      {error && (
+        <span className="text-muted-foreground flex items-center gap-1 text-xs">
+          <RiErrorWarningLine className="h-3 w-3" />
+          <span>{error}</span>
+        </span>
       )}
     </div>
   );
