@@ -9,7 +9,6 @@ import { fileURLToPath } from 'url';
 // Configuration
 const RELEASE_API_URL = "https://api.github.com/repos/CodyAdam/rclone/releases/latest";
 const TARGET_DIR = path.join("src-tauri", "bin");
-const EXECUTABLE_NAME = "rclone-dynbox";
 const IGNORE_SYSTEM = false; // Set to true to download all platform binaries
 
 function getPlatformInfo() {
@@ -134,19 +133,14 @@ async function main() {
       const asset = matchingAssets[0];
       const downloadUrl = asset.browser_download_url;
       
-      // Determine target path with absolute path
-      let targetPath;
-      if (os.platform().toLowerCase() === 'win32') {
-        targetPath = path.join(targetDirAbsolute, `${EXECUTABLE_NAME}.exe`);
-      } else {
-        targetPath = path.join(targetDirAbsolute, EXECUTABLE_NAME);
-      }
+      // Determine target path with absolute path - use the downloaded name as is
+      const targetPath = path.join(targetDirAbsolute, asset.name);
       
       // Download the binary directly to the target location
       await downloadFile(downloadUrl, targetPath);
       
       // Make the file executable on Unix-like systems
-      if (os.platform().toLowerCase() !== 'win32') {
+      if (!asset.name.endsWith('.exe')) {
         fs.chmodSync(targetPath, 0o755);
       }
       
