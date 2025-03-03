@@ -92,9 +92,14 @@ async function main() {
     // Get release information
     console.log(`Fetching release information from ${RELEASE_API_URL}`);
     
-    const response = await fetch(RELEASE_API_URL, {
-      headers: { 'User-Agent': 'Mozilla/5.0' }
-    });
+    // Use GITHUB_TOKEN for authentication if available (in GitHub Actions)
+    const headers = { 'User-Agent': 'Mozilla/5.0' };
+    if (process.env.GITHUB_TOKEN) {
+      console.log('Using GITHUB_TOKEN for API authentication');
+      headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
+    }
+    
+    const response = await fetch(RELEASE_API_URL, { headers });
     
     if (!response.ok) {
       throw new Error(`Failed to fetch release info: ${response.status} ${response.statusText}`);
