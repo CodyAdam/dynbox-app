@@ -7,6 +7,7 @@ import {
 } from "@remixicon/react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { LogoMono } from "./logo-mono";
+import { UpdaterStatus } from './updater-status';
 
 export default function TitleBar() {
   const handleMinimize = () => {
@@ -39,9 +40,10 @@ export default function TitleBar() {
         <LogoMono className="size-5 shrink-0" />
         <p className="font-display text-muted-foreground text-sm">Dynbox</p>
       </div>
+      <UpdaterStatus className="mx-auto" />
       <button
         onClick={handleMinimize}
-        className="hover:bg-muted text-muted-foreground hover:text-foreground ml-auto flex h-8 w-11 items-center justify-center transition-colors"
+        className="hover:bg-muted text-muted-foreground hover:text-foreground flex h-8 w-11 items-center justify-center transition-colors"
       >
         <RiSubtractLine className="size-4" />
       </button>

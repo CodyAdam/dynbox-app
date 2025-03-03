@@ -8,14 +8,11 @@ use crate::authorize::process_auth_urls;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let mut builder = tauri::Builder::default()
+    tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_fs::init());
-
-    #[cfg(desktop)]
-    {
-        builder = builder.plugin(tauri_plugin_single_instance::init(
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_single_instance::init(
             |app: &AppHandle, argv, _cwd| {
                 // Focus the main window when a new instance is launched
                 let _ = app
@@ -34,19 +31,11 @@ pub fn run() {
                     }
                 }
             },
-        ));
-    }
-
-    #[cfg(not(desktop))]
-    {
-        builder = builder.plugin(tauri_plugin_single_instance::init());
-    }
-
-    builder
+        ))
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_shell::init())
-        // .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             #[cfg(desktop)]
             app.deep_link().register("dynbox")?;

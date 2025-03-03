@@ -17,6 +17,12 @@
       "desktop": {
         "schemes": ["dynbox"]
       }
+    },
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEYxNDIyM0I1QUM1N0NDNjkKUldScHpGZXN0U05DOFdPUVZLeWtmOGdHMFJSaDB0QkVvb3Zoa0tPZktpbC85eS84ekNNamZ0dDgK",
+      "endpoints": [
+        "https://github.com/codyadam/dynbox-app/releases/latest/download/latest.json"
+      ]
     }
   },
   "app": {
@@ -47,6 +53,8 @@
     ],
     "externalBin": [
       "bin/rclone-dynbox"
-    ]
+    ],
+    "createUpdaterArtifacts": true
+    
   }
 }

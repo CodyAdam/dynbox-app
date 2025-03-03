@@ -28,12 +28,17 @@
         {
           "name": "powershell",
           "cmd": "powershell",
-          "args": ["-C", "Test-Path", "HKLM:\\SOFTWARE\\WOW6432Node\\WinFsp"]
+          "args": [
+            "-C",
+            "Test-Path",
+            "HKLM:\\SOFTWARE\\WOW6432Node\\WinFsp"
+          ]
         }
       ]
     },
     "shell:allow-kill",
     "fs:default",
-    "dialog:default"
+    "dialog:default",
+    "updater:default"
   ]
 }
