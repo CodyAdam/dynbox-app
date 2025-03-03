@@ -64,6 +64,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Download rclone
+        run: node script/download-latest-rclone.js
+
       - name: Build the app
         uses: tauri-apps/tauri-action@v0
         env:
