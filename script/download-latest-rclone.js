@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import fs from 'fs';
-import https from 'https';
 import os from 'os';
 import path, { dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -33,23 +32,35 @@ function getPlatformInfo() {
   return null;
 }
 
-function downloadFile(url, targetPath) {
-  return new Promise((resolve, reject) => {
-    console.log(`Downloading ${url} to ${targetPath}`);
-    const file = fs.createWriteStream(targetPath);
+async function downloadFile(url, targetPath) {
+  console.log(`Downloading ${url} to ${targetPath}`);
+  
+  try {
+    const response = await fetch(url);
     
-    https.get(url, (response) => {
-      response.pipe(file);
-      
-      file.on('finish', () => {
-        file.close();
+    if (!response.ok) {
+      throw new Error(`Failed to download: ${response.status} ${response.statusText}`);
+    }
+    
+    const fileStream = fs.createWriteStream(targetPath);
+    const buffer = await response.arrayBuffer();
+    
+    return new Promise((resolve, reject) => {
+      fileStream.write(Buffer.from(buffer));
+      fileStream.on('finish', () => {
+        fileStream.close();
         resolve();
       });
-    }).on('error', (err) => {
-      fs.unlink(targetPath, () => {}); // Delete the file if there was an error
-      reject(err);
+      fileStream.on('error', (err) => {
+        fs.unlink(targetPath, () => {}); // Delete the file if there was an error
+        reject(err);
+      });
+      fileStream.end();
     });
-  });
+  } catch (error) {
+    fs.unlink(targetPath, () => {}); // Delete the file if there was an error
+    throw error;
+  }
 }
 
 async function main() {
@@ -81,23 +92,22 @@ async function main() {
     // Get release information
     console.log(`Fetching release information from ${RELEASE_API_URL}`);
     
-    const releaseInfo = await new Promise((resolve, reject) => {
-      const req = https.get(RELEASE_API_URL, {
-        headers: { 'User-Agent': 'Mozilla/5.0' }
-      }, (res) => {
-        let data = '';
-        res.on('data', (chunk) => {
-          data += chunk;
-        });
-        res.on('end', () => {
-          resolve(JSON.parse(data));
-        });
-      });
-      
-      req.on('error', (err) => {
-        reject(err);
-      });
+    const response = await fetch(RELEASE_API_URL, {
+      headers: { 'User-Agent': 'Mozilla/5.0' }
     });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch release info: ${response.status} ${response.statusText}`);
+    }
+    
+    const releaseInfo = await response.json();
+    
+    // Check if releaseInfo has assets
+    if (!releaseInfo || !releaseInfo.assets || !Array.isArray(releaseInfo.assets)) {
+      console.error("Error: Invalid release information received from GitHub API");
+      console.error("Response:", JSON.stringify(releaseInfo, null, 2));
+      process.exit(1);
+    }
     
     if (IGNORE_SYSTEM) {
       // Download all assets
@@ -127,6 +137,7 @@ async function main() {
       
       if (matchingAssets.length === 0) {
         console.error(`Error: Could not find a release asset matching ${assetName}`);
+        console.error("Available assets:", releaseInfo.assets.map(a => a.name).join(", "));
         process.exit(1);
       }
       
