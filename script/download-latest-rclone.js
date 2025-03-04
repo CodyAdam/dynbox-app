@@ -14,22 +14,31 @@ function getPlatformInfo() {
   const system = os.platform().toLowerCase();
   const arch = os.arch().toLowerCase();
   
+  // All supported platform targets
+  const allPlatforms = [
+    'aarch64-apple-darwin',
+    'x86_64-apple-darwin',
+    'x86_64-pc-windows-msvc',
+    'x86_64-unknown-linux-gnu'
+  ];
+  
+  // If IGNORE_SYSTEM is true, return all platforms
+  if (IGNORE_SYSTEM) {
+    return allPlatforms;
+  }
+  
   // Map system and architecture to asset name format
   if (system === 'darwin') {
-    if (arch === 'arm64') {
-      return 'aarch64-apple-darwin';
-    } else {
-      return 'x86_64-apple-darwin';
-    }
+    return ['aarch64-apple-darwin', 'x86_64-apple-darwin'];
   } else if (system === 'win32') {
-    return 'x86_64-pc-windows-msvc';
+    return ['x86_64-pc-windows-msvc'];
   } else if (system === 'linux') {
-    return 'x86_64-unknown-linux-gnu';
+    return ['x86_64-unknown-linux-gnu'];
   }
   
   // Fallback
   console.log(`Warning: Unsupported platform ${system} ${arch}`);
-  return null;
+  return [];
 }
 
 async function downloadFile(url, targetPath) {
@@ -81,13 +90,13 @@ async function main() {
     console.log(`Creating directory: ${targetDirAbsolute}`);
     
     // Get platform information
-    const platformTarget = getPlatformInfo();
-    if (!platformTarget && !IGNORE_SYSTEM) {
+    const platformTargets = getPlatformInfo();
+    if (platformTargets.length === 0) {
       console.error("Error: Unsupported platform");
       process.exit(1);
     }
     
-    console.log(`Detected platform: ${platformTarget || 'Ignored (downloading all)'}`);
+    console.log(`Detected platforms: ${platformTargets.join(', ')}`);
     
     // Get release information
     console.log(`Fetching release information from ${RELEASE_API_URL}`);
@@ -114,27 +123,10 @@ async function main() {
       process.exit(1);
     }
     
-    if (IGNORE_SYSTEM) {
-      // Download all assets
-      for (const asset of releaseInfo.assets) {
-        const assetName = asset.name;
-        const downloadUrl = asset.browser_download_url;
-        const targetPath = path.join(targetDirAbsolute, assetName);
-        
-        // Download the binary directly to the target location
-        await downloadFile(downloadUrl, targetPath);
-        
-        // Make the file executable on Unix-like systems
-        if (!assetName.endsWith('.exe')) {
-          fs.chmodSync(targetPath, 0o755);
-        }
-        
-        console.log(`Successfully installed ${assetName} to ${targetPath}`);
-      }
-    } else {
-      // Find the appropriate asset for the current platform
+    // Download assets for each platform target
+    for (const platformTarget of platformTargets) {
       let assetName = `rclone-dynbox-${platformTarget}`;
-      if (os.platform().toLowerCase() === 'win32') {
+      if (platformTarget === 'x86_64-pc-windows-msvc') {
         assetName += '.exe';
       }
       
@@ -143,13 +135,11 @@ async function main() {
       if (matchingAssets.length === 0) {
         console.error(`Error: Could not find a release asset matching ${assetName}`);
         console.error("Available assets:", releaseInfo.assets.map(a => a.name).join(", "));
-        process.exit(1);
+        continue;
       }
       
       const asset = matchingAssets[0];
       const downloadUrl = asset.browser_download_url;
-      
-      // Determine target path with absolute path - use the downloaded name as is
       const targetPath = path.join(targetDirAbsolute, asset.name);
       
       // Download the binary directly to the target location
@@ -160,7 +150,7 @@ async function main() {
         fs.chmodSync(targetPath, 0o755);
       }
       
-      console.log(`Successfully installed rclone to ${targetPath}`);
+      console.log(`Successfully installed rclone (${platformTarget}) to ${targetPath}`);
     }
   } catch (error) {
     console.error("Error:", error);
