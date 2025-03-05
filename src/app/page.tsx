@@ -9,7 +9,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Child, Command } from "@tauri-apps/plugin-shell";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "./_components/button";
 import { Card } from "./_components/card";
 import { LogoMono } from "./_components/logo-mono";
@@ -58,13 +58,6 @@ export default function Home() {
     queryKey: ["check-winfsp"],
     queryFn: async () => await checkWinfsp(),
   });
-
-  useEffect(() => {
-    // when updating config while running, stop the sync
-    if (runningChildren.length > 0) {
-      handleStartSync();
-    }
-  }, [configVaults]);
 
   const handleDirectorySelect = async (
     vaultId: string,
@@ -123,7 +116,7 @@ export default function Home() {
     setToken(undefined);
   };
 
-  const handleStartSync = async () => {
+  const handleStartSync = useCallback(async () => {
     if (runningChildren.length > 0) {
       // Kill all running children
       try {
@@ -138,7 +131,7 @@ export default function Home() {
           message: "Stopped sync processes",
           type: "info",
         });
-      } catch (err) {
+      } catch {
         addLog({
           group: "System",
           message: "Error killing processes",
@@ -238,7 +231,7 @@ export default function Home() {
         type: "error",
       });
     }
-  };
+  }, [addLog, configVaults, runningChildren, token, vaults]);
 
   const renderLoginContent = () => {
     if (!token) {
@@ -362,6 +355,13 @@ export default function Home() {
       </div>
     );
   };
+
+  useEffect(() => {
+    // when updating config while running, stop the sync
+    if (runningChildren.length > 0) {
+      handleStartSync();
+    }
+  }, [configVaults, handleStartSync, runningChildren.length]);
 
   return (
     <div className="flex h-full flex-col">
