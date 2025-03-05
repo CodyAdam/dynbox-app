@@ -4,7 +4,6 @@ import { env } from "@/env.mjs";
 import { api } from "@/lib/api-react";
 import { checkWinfsp } from "@/lib/check-winfsp";
 import { useTauriStore } from "@/lib/store";
-import { sanitizeFolderName } from "@/lib/utils/folder-name";
 import { useQuery } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
