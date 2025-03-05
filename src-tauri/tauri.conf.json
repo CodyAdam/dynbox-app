@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Dynbox App",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "identifier": "com.dynbox.app",
   "build": {
     "frontendDist": "../out",
