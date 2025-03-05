@@ -1,11 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/css";
-import {
-  RiDownloadLine,
-  RiErrorWarningLine,
-  RiRestartLine,
-} from "@remixicon/react";
+import { getVersion } from "@tauri-apps/api/app";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check, Update } from "@tauri-apps/plugin-updater";
 import { useEffect, useState } from "react";
@@ -20,10 +16,16 @@ export function UpdaterStatus({ className }: { className?: string }) {
   } | null>(null);
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [currentVersion, setCurrentVersion] = useState<string | null>(null);
 
   useEffect(() => {
-    const checkForUpdates = async () => {
+    const fetchVersionAndCheckUpdates = async () => {
       try {
+        // Get current app version
+        const appVersion = await getVersion();
+        setCurrentVersion(appVersion);
+
+        // Check for updates
         setUpdateStatus("checking");
         const update = await check();
 
@@ -44,7 +46,7 @@ export function UpdaterStatus({ className }: { className?: string }) {
       }
     };
 
-    checkForUpdates();
+    fetchVersionAndCheckUpdates();
   }, []);
 
   const startDownload = async (update: Update) => {
@@ -89,36 +91,38 @@ export function UpdaterStatus({ className }: { className?: string }) {
   };
 
   return (
-    <div className={cn("ml-2 flex h-8 max-w-sm items-center", className)}>
+    <div
+      className={cn(
+        "text-muted-foreground flex h-8 max-w-md items-center gap-3 text-xs",
+        className,
+      )}
+    >
+      {updateStatus === "not-available" && currentVersion && (
+        <div title={`Up to date`}>v{currentVersion}</div>
+      )}
+
       {updateStatus === "available" && (
-        <span className="text-muted-foreground flex items-center gap-1 text-xs">
-          <RiDownloadLine className="h-3 w-3 animate-pulse" />
-          <span>Update v{updateInfo?.version} available</span>
-        </span>
+        <div>Update v{updateInfo?.version} available</div>
       )}
 
       {updateStatus === "downloading" && (
-        <span className="text-muted-foreground flex items-center gap-1 text-xs">
-          <RiDownloadLine className="h-3 w-3 animate-pulse" />
-          <span>Downloading {downloadProgress}%</span>
-        </span>
+        <div>Downloading update ({downloadProgress}%)</div>
       )}
 
       {updateStatus === "ready" && (
         <button
           onClick={handleRestart}
-          className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs"
+          className="hover:text-foreground"
+          title={`Restart to update to ${updateInfo?.version} (current version: ${currentVersion})`}
         >
-          <RiRestartLine className="h-3 w-3" />
           <span>Restart to update</span>
         </button>
       )}
 
       {error && (
-        <span className="text-muted-foreground flex items-center gap-1 text-xs">
-          <RiErrorWarningLine className="h-3 w-3" />
-          <span>{error}</span>
-        </span>
+        <div className="truncate" title={error}>
+          {error}
+        </div>
       )}
     </div>
   );
