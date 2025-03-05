@@ -22,10 +22,13 @@ export default function Home() {
     "vaults",
     undefined,
   );
+  
   const { logs, add: addLog, clear: clearLogs } = useLog();
   const [runningChildren, setRunningChildren] = useState<
     { process: Child; vaultId: string }[]
   >([]);
+  const [runningConfigSnapshot, setRunningConfigSnapshot] = useState<typeof configVaults>(undefined);
+  const [configChanged, setConfigChanged] = useState(false);
   const {
     data: account,
     error,
@@ -58,6 +61,17 @@ export default function Home() {
     queryKey: ["check-winfsp"],
     queryFn: async () => await checkWinfsp(),
   });
+
+  // Check if config has changed while running
+  useEffect(() => {
+    if (runningChildren.length > 0 && runningConfigSnapshot) {
+      // Deep comparison of configs
+      const hasChanged = JSON.stringify(configVaults) !== JSON.stringify(runningConfigSnapshot);
+      setConfigChanged(hasChanged);
+    } else {
+      setConfigChanged(false);
+    }
+  }, [configVaults, runningConfigSnapshot, runningChildren.length]);
 
   const handleDirectorySelect = async (
     vaultId: string,
@@ -126,6 +140,7 @@ export default function Home() {
           }),
         );
         setRunningChildren([]);
+        setRunningConfigSnapshot(undefined);
         addLog({
           group: "System",
           message: "Stopped sync processes",
@@ -146,6 +161,9 @@ export default function Home() {
       message: "Starting sync processes",
       type: "info",
     });
+
+    // Take a snapshot of the current config
+    setRunningConfigSnapshot(JSON.parse(JSON.stringify(configVaults)));
 
     const configVaultsList = Object.entries(configVaults ?? {});
 
@@ -230,8 +248,15 @@ export default function Home() {
         message: "Error starting sync processes",
         type: "error",
       });
+      setRunningConfigSnapshot(undefined);
     }
   }, [addLog, configVaults, runningChildren, token, vaults]);
+
+  useEffect(() => {
+    if (runningChildren.length === 0) {
+      setRunningConfigSnapshot(undefined);
+    }
+  }, [runningChildren]);
 
   const renderLoginContent = () => {
     if (!token) {
@@ -356,13 +381,6 @@ export default function Home() {
     );
   };
 
-  useEffect(() => {
-    // when updating config while running, stop the sync
-    if (runningChildren.length > 0) {
-      handleStartSync();
-    }
-  }, [configVaults, handleStartSync, runningChildren.length]);
-
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-full flex-col items-center gap-10 overflow-y-auto p-8 py-20">
@@ -410,6 +428,11 @@ export default function Home() {
           account &&
           Object.values(configVaults ?? {}).some((v) => v.enabled) && (
             <Card title="Synchronization" step={3}>
+              {configChanged && (
+                <div className="bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 mb-4 rounded-md p-3 text-sm">
+                  Configuration has changed. You need to restart synchronization to apply changes.
+                </div>
+              )}
               <Button
                 variant={runningChildren.length > 0 ? "success" : "primary"}
                 onClick={handleStartSync}
