@@ -3,8 +3,13 @@ use tauri::{AppHandle, Manager};
 use tauri_plugin_deep_link::DeepLinkExt;
 
 mod authorize;
+mod autostart;
+mod tray;
+mod window;
 
 use crate::authorize::process_auth_urls;
+use crate::tray::create_tray_menu;
+use crate::window::setup_window_events;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -54,11 +59,18 @@ pub fn run() {
                         .build(),
                 )?;
             }
+
             #[cfg(desktop)]
             let _ = app.handle().plugin(tauri_plugin_autostart::init(
                 tauri_plugin_autostart::MacosLauncher::LaunchAgent,
                 None,
             ));
+
+            // Create system tray
+            create_tray_menu(&app.handle())?;
+
+            // Setup window events
+            setup_window_events(&app.handle());
 
             Ok(())
         })

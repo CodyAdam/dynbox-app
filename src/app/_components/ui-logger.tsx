@@ -1,6 +1,7 @@
 import { cn } from "@/lib/css";
 import { RiArrowDownSLine } from "@remixicon/react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { Button } from "./button";
 
 export type Log = {
   group: string; // the category prefix for the log
@@ -10,7 +11,8 @@ export type Log = {
   id: string; // the id of the log
 };
 
-const WINDOW_SIZE = 1000;
+const WINDOW_SIZE = 200;
+
 export function useLog() {
   const [logs, setLogs] = useState<Log[]>([]);
 
@@ -30,7 +32,19 @@ export function useLog() {
     });
   };
 
-  return { logs, addLog };
+  const clear = useCallback(() => {
+    setLogs([
+      {
+        group: "System",
+        message: "Logs cleared",
+        timestamp: new Date(),
+        type: "info",
+        id: crypto.randomUUID(),
+      },
+    ]);
+  }, []);
+
+  return { logs, add: addLog, clear };
 }
 
 const getColorFromString = (str: string) => {
@@ -61,12 +75,18 @@ const getColorFromString = (str: string) => {
   return `hsl(${h}, 100%, 80%)`;
 };
 
-export function UILogger({ logs }: { logs: Log[] }) {
+export function UILogger({
+  logs,
+  clearLogs,
+}: {
+  logs: Log[];
+  clearLogs: () => void;
+}) {
   const [showLogs, setShowLogs] = useState(false);
   return (
     <div
       className={cn(
-        "bg-secondary w-full shrink-0 overflow-y-auto border-t",
+        "bg-secondary w-full shrink-0 overflow-x-hidden overflow-y-auto border-t",
         showLogs && "h-1/2",
       )}
     >
@@ -83,7 +103,7 @@ export function UILogger({ logs }: { logs: Log[] }) {
         />
       </button>
       {showLogs && (
-        <table className="w-full border-collapse font-mono text-sm mb-20">
+        <table className="mb-20 w-full border-collapse font-mono text-sm">
           <tbody>
             {logs.map((log) => (
               <tr key={`log-${log.id}`} className={cn("group")}>
@@ -100,7 +120,7 @@ export function UILogger({ logs }: { logs: Log[] }) {
                 </td>
                 <td
                   className={cn(
-                    "w-full border-b px-2 py-1 align-top",
+                    "w-full border-b px-2 py-1 align-top break-all whitespace-pre-wrap",
                     log.type === "error" && "text-red-700",
                   )}
                   title={log.timestamp.toLocaleString()}
@@ -111,6 +131,14 @@ export function UILogger({ logs }: { logs: Log[] }) {
             ))}
           </tbody>
         </table>
+      )}
+      {showLogs && (
+        <Button
+          onClick={clearLogs}
+          className="fixed right-4 bottom-4 w-fit backdrop-blur-md"
+        >
+          Clear logs
+        </Button>
       )}
     </div>
   );

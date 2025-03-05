@@ -27,7 +27,7 @@ export default function TitleBar() {
   const handleClose = () => {
     const appWindow = getCurrentWindow();
     if (appWindow) {
-      appWindow.close();
+      appWindow.hide()
     }
   };
 

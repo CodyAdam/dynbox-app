@@ -9,7 +9,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Child, Command } from "@tauri-apps/plugin-shell";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "./_components/button";
 import { Card } from "./_components/card";
 import { LogoMono } from "./_components/logo-mono";
@@ -22,7 +22,7 @@ export default function Home() {
     "vaults",
     undefined,
   );
-  const { logs, addLog } = useLog();
+  const { logs, add: addLog, clear: clearLogs } = useLog();
   const [runningChildren, setRunningChildren] = useState<
     { process: Child; vaultId: string }[]
   >([]);
@@ -58,6 +58,13 @@ export default function Home() {
     queryKey: ["check-winfsp"],
     queryFn: async () => await checkWinfsp(),
   });
+
+  useEffect(() => {
+    // when updating config while running, stop the sync
+    if (runningChildren.length > 0) {
+      handleStartSync();
+    }
+  }, [configVaults]);
 
   const handleDirectorySelect = async (
     vaultId: string,
@@ -127,14 +134,13 @@ export default function Home() {
         );
         setRunningChildren([]);
         addLog({
-          group: "Sync",
+          group: "System",
           message: "Stopped sync processes",
           type: "info",
         });
       } catch (err) {
-        console.error("Error killing processes:", err);
         addLog({
-          group: "Sync",
+          group: "System",
           message: "Error killing processes",
           type: "error",
         });
@@ -143,7 +149,7 @@ export default function Home() {
     }
 
     addLog({
-      group: "Sync",
+      group: "System",
       message: "Starting sync processes",
       type: "info",
     });
@@ -152,81 +158,83 @@ export default function Home() {
 
     try {
       const newRunningChildren: { process: Child; vaultId: string }[] = [];
-      await Promise.all(
-        configVaultsList.map(async (vault) => {
-          const [vaultId, config] = vault;
-          if (!config.enabled) return null;
-          const name = vaults?.find((v) => v.vault.id === vaultId)?.vault.name;
-          if (!name || !vaultId || !token) {
-            console.error("Vault not found");
-            return null;
-          }
-          const command = Command.sidecar(
-            "bin/rclone-dynbox",
-            [
-              "mount",
-              `:dynbox,vault_id=${vaultId},access_token=${token},endpoint='${env.NEXT_PUBLIC_APP_URL}/api':`,
-              config.directory ? `${config.directory}/${name}` : "*",
-              !config.directory && `--volname=${name}`,
-              "--vfs-cache-mode=full",
-              "--links",
-            ].filter(Boolean) as string[],
+
+      // Process vaults sequentially instead of using Promise.all
+      for (const vault of configVaultsList) {
+        const [vaultId, config] = vault;
+        if (!config.enabled) continue;
+
+        const name = vaults?.find((v) => v.vault.id === vaultId)?.vault.name;
+        if (!name || !vaultId || !token) {
+          console.error("Vault not found");
+          continue;
+        }
+
+        const command = Command.sidecar(
+          "bin/rclone-dynbox",
+          [
+            "mount",
+            `:dynbox,vault_id=${vaultId},access_token=${token},endpoint='${env.NEXT_PUBLIC_APP_URL}/api':`,
+            config.directory ? `${config.directory}/${name}` : "*",
+            !config.directory && `--volname=${name}`,
+            "--vfs-cache-mode=full",
+            "--links",
+            "--use-cookies",
+            // "--dump-bodies",
+          ].filter(Boolean) as string[],
+        );
+
+        command.addListener("close", () => {
+          setRunningChildren((prev) =>
+            prev.filter((child) => child.vaultId !== vaultId),
           );
-          command.addListener("close", () => {
-            console.log(`[${name} - close]: process exited`);
-            setRunningChildren((prev) =>
-              prev.filter((child) => child.vaultId !== vaultId),
-            );
-            addLog({
-              group: name,
-              message: "Process exited",
+          addLog({
+            group: name,
+            message: "Process exited",
+            type: "info",
+          });
+        });
 
-              type: "info",
-            });
+        command.addListener("error", (err) => {
+          addLog({
+            group: name,
+            message: err,
+            type: "error",
           });
-          command.addListener("error", (err) => {
-            console.error(`[${name} - error]: ${err}`);
-            addLog({
-              group: name,
-              message: err,
+        });
 
-              type: "error",
-            });
+        command.stdout.on("data", (data) => {
+          addLog({
+            group: name,
+            message: data,
+            type: "info",
           });
-          command.stdout.on("data", (data) => {
-            console.log(`[${name} - stdout]: ${data}`);
-            addLog({
-              group: name,
-              message: data,
+        });
 
-              type: "info",
-            });
+        command.stderr.on("data", (data) => {
+          addLog({
+            group: name,
+            message: data,
+            type: "info",
           });
-          command.stderr.on("data", (data) => {
-            console.error(`[${name} - stderr]: ${data}`);
-            addLog({
-              group: name,
-              message: data,
+        });
 
-              type: "error",
-            });
-          });
-          const handle = await command.spawn();
-          newRunningChildren.push({
-            process: handle,
-            vaultId,
-          });
-          return handle;
-        }),
-      );
+        const handle = await command.spawn();
+        newRunningChildren.push({
+          process: handle,
+          vaultId,
+        });
+
+        // Add a 2 second wait before proceeding
+        await new Promise((resolve) => setTimeout(resolve, 4000));
+      }
 
       setRunningChildren(newRunningChildren);
     } catch (err) {
       console.error("Error starting sync processes:", err);
       addLog({
-        group: "Sync",
+        group: "System",
         message: "Error starting sync processes",
-
         type: "error",
       });
     }
@@ -329,15 +337,23 @@ export default function Home() {
                   }}
                 />
                 <p className="text-muted-foreground text-sm">
-                  Syncronize to folder
+                  Use folder instead of drive
                 </p>
               </div>
-              {configVaults?.[vault.vault.id]?.directory && (
+              {configVaults?.[vault.vault.id]?.directory ? (
                 <p className="text-muted-foreground text-sm">
                   Selected folder:{" "}
                   <span className="bg-foreground/10 rounded-xs px-1 font-mono">
                     {configVaults?.[vault.vault.id]?.directory}
                   </span>
+                </p>
+              ) : (
+                <p className="text-muted-foreground text-sm">
+                  Using virtual drive (e.g.{" "}
+                  <span className="bg-foreground/10 rounded-xs px-1 font-mono">
+                    Z:/
+                  </span>
+                  )
                 </p>
               )}
             </div>
@@ -390,21 +406,23 @@ export default function Home() {
           </Card>
         )}
 
-        {token && account && Object.keys(configVaults ?? {}).length > 0 && (
-          <Card title="Start syncronizing" step={3}>
-            <Button
-              variant={runningChildren.length > 0 ? "success" : "primary"}
-              onClick={handleStartSync}
-            >
-              {runningChildren.length > 0
-                ? `Stop syncronizing (${runningChildren.length} running)`
-                : "Start syncronizing"}
-            </Button>
-          </Card>
-        )}
+        {token &&
+          account &&
+          Object.values(configVaults ?? {}).some((v) => v.enabled) && (
+            <Card title="Synchronization" step={3}>
+              <Button
+                variant={runningChildren.length > 0 ? "success" : "primary"}
+                onClick={handleStartSync}
+              >
+                {runningChildren.length > 0
+                  ? `Stop syncronizing (${runningChildren.length} running)`
+                  : "Start syncronizing"}
+              </Button>
+            </Card>
+          )}
       </div>
 
-      {logs.length > 0 && <UILogger logs={logs} />}
+      {logs.length > 0 && <UILogger logs={logs} clearLogs={clearLogs} />}
     </div>
   );
 }
