@@ -4,6 +4,7 @@ import { env } from "@/env.mjs";
 import { api } from "@/lib/api-react";
 import { checkWinfsp } from "@/lib/check-winfsp";
 import { useTauriStore } from "@/lib/store";
+import { RiExternalLinkLine, RiLoader5Line } from "@remixicon/react";
 import { useQuery } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -22,12 +23,15 @@ export default function Home() {
     "vaults",
     undefined,
   );
-  
+
   const { logs, add: addLog, clear: clearLogs } = useLog();
   const [runningChildren, setRunningChildren] = useState<
     { process: Child; vaultId: string }[]
   >([]);
-  const [runningConfigSnapshot, setRunningConfigSnapshot] = useState<typeof configVaults>(undefined);
+  const [runningConfigSnapshot, setRunningConfigSnapshot] =
+    useState<typeof configVaults>(undefined);
+  const [loading, setLoading] = useState(false);
+  const [hasAutoStarted, setHasAutoStarted] = useState(false);
   const [configChanged, setConfigChanged] = useState(false);
   const {
     data: account,
@@ -66,7 +70,8 @@ export default function Home() {
   useEffect(() => {
     if (runningChildren.length > 0 && runningConfigSnapshot) {
       // Deep comparison of configs
-      const hasChanged = JSON.stringify(configVaults) !== JSON.stringify(runningConfigSnapshot);
+      const hasChanged =
+        JSON.stringify(configVaults) !== JSON.stringify(runningConfigSnapshot);
       setConfigChanged(hasChanged);
     } else {
       setConfigChanged(false);
@@ -131,6 +136,7 @@ export default function Home() {
   };
 
   const handleStartSync = useCallback(async () => {
+    setLoading(true);
     if (runningChildren.length > 0) {
       // Kill all running children
       try {
@@ -153,6 +159,7 @@ export default function Home() {
           type: "error",
         });
       }
+      setLoading(false);
       return;
     }
 
@@ -170,14 +177,19 @@ export default function Home() {
     try {
       const newRunningChildren: { process: Child; vaultId: string }[] = [];
 
-      // Process vaults sequentially instead of using Promise.all
       for (const vault of configVaultsList) {
         const [vaultId, config] = vault;
         if (!config.enabled) continue;
 
         const name = vaults?.find((v) => v.vault.id === vaultId)?.vault.name;
         if (!name || !vaultId || !token) {
-          console.error("Vault not found");
+          console.error(
+            `Vault not found - ID: ${vaultId}, Name: ${name}, Token Exists: ${!!token}, in list: \n${JSON.stringify(
+              vaults,
+              null,
+              2,
+            )}`,
+          );
           continue;
         }
 
@@ -249,6 +261,8 @@ export default function Home() {
         type: "error",
       });
       setRunningConfigSnapshot(undefined);
+    } finally {
+      setLoading(false);
     }
   }, [addLog, configVaults, runningChildren, token, vaults]);
 
@@ -257,6 +271,41 @@ export default function Home() {
       setRunningConfigSnapshot(undefined);
     }
   }, [runningChildren]);
+
+  // Add this new useEffect for auto-starting sync
+  useEffect(() => {
+    // Check if all conditions are met for auto-starting
+    const canAutoStart =
+      !hasAutoStarted &&
+      !loading &&
+      !!token &&
+      !!account &&
+      !!vaults &&
+      Object.values(configVaults ?? {}).some((v) => v.enabled) &&
+      runningChildren.length === 0 &&
+      winfspInstalled === true;
+
+    if (canAutoStart) {
+      setHasAutoStarted(true);
+      addLog({
+        group: "System",
+        message: "Auto-starting sync on application launch",
+        type: "info",
+      });
+      handleStartSync();
+    }
+  }, [
+    token,
+    account,
+    configVaults,
+    runningChildren.length,
+    winfspInstalled,
+    addLog,
+    handleStartSync,
+    loading,
+    hasAutoStarted,
+    vaults,
+  ]);
 
   const renderLoginContent = () => {
     if (!token) {
@@ -337,9 +386,7 @@ export default function Home() {
                   checked={configVaults?.[vault.vault.id]?.enabled}
                   onCheckedChange={() => handleToggleVault(vault.vault.id)}
                 />
-                <p className="text-muted-foreground text-sm">
-                  Enable syncronization
-                </p>
+                <p className="text-muted-foreground text-sm">Enable</p>
               </div>
               <div className="flex flex-row items-center gap-2">
                 <Switch
@@ -375,6 +422,13 @@ export default function Home() {
                 </p>
               )}
             </div>
+            <Button
+              variant="secondary"
+              className="flex flex-row items-center justify-center gap-2"
+              onClick={() => openUrl(`https://dynbox.co/${vault.vault.slug}`)}
+            >
+              Open Chat <RiExternalLinkLine className="size-5 shrink-0" />
+            </Button>
           </div>
         ))}
       </div>
@@ -426,17 +480,23 @@ export default function Home() {
 
         {token &&
           account &&
-          Object.values(configVaults ?? {}).some((v) => v.enabled) && (
+          (Object.values(configVaults ?? {}).some((v) => v.enabled) ||
+            runningChildren.length > 0) && (
             <Card title="Synchronization" step={3}>
               {configChanged && (
-                <div className="bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 mb-4 rounded-md p-3 text-sm">
-                  Configuration has changed. You need to restart synchronization to apply changes.
+                <div className="rounded-md bg-amber-100 p-3 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                  Configuration has changed. You need to restart synchronization
+                  to apply changes.
                 </div>
               )}
               <Button
                 variant={runningChildren.length > 0 ? "success" : "primary"}
                 onClick={handleStartSync}
+                className="flex flex-row items-center justify-center gap-2"
               >
+                {loading && runningChildren.length === 0 && (
+                  <RiLoader5Line className="size-5 animate-spin" />
+                )}
                 {runningChildren.length > 0
                   ? `Stop syncronizing (${runningChildren.length} running)`
                   : "Start syncronizing"}

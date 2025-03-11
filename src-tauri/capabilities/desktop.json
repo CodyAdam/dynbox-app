@@ -1,4 +1,5 @@
 {
+  "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "desktop-capability",
   "platforms": [
     "macOS",
@@ -38,7 +39,6 @@
     },
     "shell:allow-kill",
     "fs:default",
-    "dialog:default",
-    "updater:default"
+    "dialog:default"
   ]
 }
