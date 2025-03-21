@@ -44,6 +44,8 @@ jobs:
 
       - name: Install pnpm
         uses: pnpm/action-setup@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           version: 8
           run_install: false
@@ -63,11 +65,6 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
-
-      - name: Download rclone
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node script/download-latest-rclone.js
 
       - name: Build the app
         uses: tauri-apps/tauri-action@v0
