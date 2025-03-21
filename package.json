@@ -10,7 +10,8 @@
     "start": "next start",
     "lint": "next lint",
     "format": "prettier --write .",
-    "generate": "openapi-typescript https://dynbox.co/api/openapi.json -o ./src/lib/api.d.ts"
+    "generate": "openapi-typescript https://dynbox.co/api/openapi.json -o ./src/lib/api.d.ts",
+    "postinstall": "node ./scripts/download-latest-rclone.js"
   },
   "dependencies": {
     "@radix-ui/react-switch": "^1.1.3",
